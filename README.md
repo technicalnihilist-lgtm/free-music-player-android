@@ -1,13 +1,13 @@
 # Free Music — Android music player
 
-Ek chhota, pura chalne wala Android music player jo **do legal, open music catalogs** se
-stream karta hai: **Audius** (bina kisi API key ke) aur **Jamendo** (free key chahiye).
+Ek chhota, pura chalne wala Android music player jo teen sources se chalta hai:
+**Audius** (bina key), **Jamendo** (free key) aur **Spotify** (aapka Client ID + Premium).
 Kotlin + Jetpack Compose + Media3 (ExoPlayer).
 
-> **Legal note:** duniya ke saare commercial gaane (Bollywood / Hollywood) kisi bhi app se
-> free nahi chalaye ja sakte — wo catalog licensed hota hai aur uske liye Spotify/Apple
-> jaisa platform ya licensing deal chahiye. Ye app wahi music bajata hai jo artists ne
-> khud upload kiya hai ya CC license ke saath share kiya hai, is liye ye 100% legal hai.
+> **Legal note:** commercial catalog (Bollywood / Hollywood) kisi bhi app se free nahi
+> chalaya ja sakta — uske liye licensed platform chahiye. Is app mein Audius aur Jamendo
+> wahi music dete hain jo artists ne khud upload kiya ya CC license ke saath share kiya.
+> Spotify source official Web API use karta hai, aur gaana Spotify app ke andar bajta hai.
 
 ## Screenshots
 
@@ -21,34 +21,52 @@ emulator nahi tha._
 
 ## Download
 
-Prebuilt APK: [**FreeMusic-1.1.apk**](https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest)
+Prebuilt APK: [**FreeMusic-1.2.apk**](https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest)
 
 Install karne ke liye phone par "Install unknown apps" allow karna padega.
 Debug key se signed hai — apna release build banane ke liye neeche dekhein.
 
 ## Music sources
 
-App khulte hi **Audius** par chalta hai — koi signup, koi key nahi. Upar ke chips se
-aap **Jamendo** par switch kar sakte hain.
+| Source | Key chahiye? | Audio kahan se | Catalog |
+|---|---|---|---|
+| **Audius** (default) | Nahi — bas `app_name` string | Seedha app mein (ExoPlayer) | Open catalog, artists ke apne uploads |
+| **Jamendo** | Haan, free Client ID | Seedha app mein (ExoPlayer) | 600,000+ Creative Commons tracks |
+| **Spotify** | Haan, Client ID + **Premium** | Spotify app ke andar | Poora licensed catalog |
 
-| Source | Key chahiye? | Catalog |
-|---|---|---|
-| **Audius** | Nahi — bas ek `app_name` string | Open catalog, artists ke apne uploads |
-| **Jamendo** | Haan, free Client ID | 600,000+ Creative Commons tracks |
+### Audius
 
-Audius ka read API bina credentials ke chalta hai: har request mein sirf `app_name`
-bhejna hota hai, jo aap khud choose karte hain. `GET /tracks/{id}/stream` asli audio
-deti hai (30-second preview nahi) un tracks ke liye jinme `is_streamable` true hai.
-Audius kai discovery nodes par chalta hai, is liye app 4 known hosts ko order se try
-karta hai.
+Read API bina credentials ke chalta hai: har request mein sirf `app_name` bhejna hota hai.
+`GET /tracks/{id}/stream` asli audio deti hai un tracks ke liye jinme `is_streamable`
+true hai. Audius kai discovery nodes par chalta hai, is liye app 4 known hosts order se
+try karta hai.
 
-Jamendo key ke liye: [devportal.jamendo.com](https://devportal.jamendo.com/) par free
-account banayein → naya app banayein → **Client ID** copy karein → app ke settings icon
-se paste karein. Read-only plan turant mil jata hai.
+### Jamendo
+
+[devportal.jamendo.com](https://devportal.jamendo.com/) par free account → naya app →
+**Client ID** copy karein → app ke settings icon se paste karein. Read-only plan turant
+milta hai.
+
+### Spotify — setup (ek baar)
+
+1. [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) par app banayein
+2. **Redirect URI** add karein: `freemusic://callback` (exactly, bina slash ke)
+3. **Client ID** copy karein — Client **secret ki zarurat nahi hai**, use kabhi na daalein
+4. App mein Spotify chip chunein, Client ID paste karein, "Login with Spotify" dabayein
+
+Kaam karne ke liye: phone mein **Spotify app installed** ho, aur us account par
+**Premium** ho. Ek baar Spotify app mein koi gaana baja lein taaki wo "active device"
+ban jaye — phir is app se track choose karne par wahi bajega.
+
+**Kaise kaam karta hai:** login Authorization Code + PKCE flow se hota hai (client secret
+ke bina, jo mobile apps ke liye Spotify ka recommended flow hai). Uske baad app Web API
+se search karti hai aur `PUT /me/player/play` se Spotify ko bolti hai ki track bajaye.
+Audio app ke andar kabhi nahi aata — is liye background playback, seek bar aur mini
+player Spotify source par laagu nahi hote; wo controls Spotify app mein hain.
 
 ## Features
 
-- Do sources: Audius (default, keyless) aur Jamendo
+- Teen sources: Audius (default, keyless), Jamendo, Spotify
 - Search — gaana, artist ya album ke naam se
 - Genre filter — Pop, Rock, Electronic, Hip-Hop, Jazz, Classical, Ambient, Lounge, World
 - Background playback + notification aur lock-screen controls (Media3 MediaSession)
@@ -83,10 +101,12 @@ Ya Android Studio mein `File > Open` → sync → `Build > Build APK(s)`.
 
 ```
 app/src/main/java/com/freemusic/player/
-  MainActivity.kt              entry point, notification permission
+  MainActivity.kt              entry point, notifications, Spotify redirect handling
   data/Audius.kt               Audius API (no key) + node failover
   data/Jamendo.kt              Jamendo API + JSON parsing
-  data/Prefs.kt                Jamendo client id storage
+  data/SpotifyAuth.kt          Authorization Code + PKCE login (no client secret)
+  data/SpotifyApi.kt           Web API search + play-on-device
+  data/Prefs.kt                API keys and Spotify tokens
   player/PlaybackService.kt    Media3 background service + notification
   player/PlayerViewModel.kt    MediaController + UI state flow
   ui/App.kt                    Compose UI (browse, source switcher, players)
@@ -96,13 +116,16 @@ app/src/main/java/com/freemusic/player/
 
 ## Changelog
 
-**v1.1** — Audius source added (keyless, default). Jamendo ab optional; key ki hard gate
-hati, settings icon se key manage hoti hai. Source switcher chips.
+**v1.2** — Spotify source: PKCE login, catalog search, play on active Spotify device
+(Premium + Spotify app required). Note: the official `spotify-auth` 2.1.0 AAR was not
+used — it has no PKCE support and its implicit-grant path was sunset on 27 Nov 2025, so
+the documented PKCE flow is implemented directly.
+
+**v1.1** — Audius source added (keyless, default). Jamendo optional; source switcher chips.
 
 **v1.0** — Pehla working build: Jamendo streaming, search, genres, background playback.
 
 ## License
 
 Code MIT. Music apne respective platform ke terms ke under aata hai — Audius par artist
-ke apne uploads, Jamendo par CC licenses (har track ka `license_ccurl` API response mein
-milta hai).
+ke apne uploads, Jamendo par CC licenses, Spotify par Spotify ke terms.
