@@ -22,12 +22,18 @@ object InternetArchive {
 
     private val client = OkHttpClient()
 
-    suspend fun fetch(query: String?): List<Track> = withContext(Dispatchers.IO) {
-        val q = if (query.isNullOrBlank()) {
-            "mediatype:(audio) AND (collection:(opensource_audio) OR " +
-                "licenseurl:(*creativecommons*)) AND format:(MP3)"
-        } else {
-            "mediatype:(audio) AND format:(MP3) AND ($query)"
+    /** @param collection optional archive.org collection, e.g. "musopen" for public-domain classical */
+    suspend fun fetch(query: String?, collection: String? = null): List<Track> =
+        withContext(Dispatchers.IO) {
+        val q = when {
+            !collection.isNullOrBlank() && query.isNullOrBlank() ->
+                "mediatype:(audio) AND format:(MP3) AND collection:($collection)"
+            !collection.isNullOrBlank() ->
+                "mediatype:(audio) AND format:(MP3) AND collection:($collection) AND ($query)"
+            query.isNullOrBlank() ->
+                "mediatype:(audio) AND (collection:(opensource_audio) OR " +
+                    "licenseurl:(*creativecommons*)) AND format:(MP3)"
+            else -> "mediatype:(audio) AND format:(MP3) AND ($query)"
         }
 
         val url = "https://archive.org/advancedsearch.php".toHttpUrl().newBuilder()
