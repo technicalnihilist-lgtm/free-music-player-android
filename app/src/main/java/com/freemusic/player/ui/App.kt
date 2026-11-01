@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.freemusic.player.data.Audius
 import com.freemusic.player.data.Jamendo
 import com.freemusic.player.data.Prefs
 import com.freemusic.player.data.Track
@@ -71,6 +72,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+enum class MusicSource(val label: String) {
+    AUDIUS("Audius"),
+    JAMENDO("Jamendo")
+}
 
 private val GENRES = listOf(
     "All" to null,
@@ -89,48 +95,30 @@ private val GENRES = listOf(
 
 @Composable
 fun App() {
-    val context = LocalContext.current
-    var clientId by remember { mutableStateOf(Prefs.clientId(context)) }
-
-    if (clientId.isBlank()) {
-        SetupScreen(
-            onSave = { id ->
-                Prefs.setClientId(context, id)
-                clientId = id.trim()
-            }
-        )
-    } else {
-        MainScreen(
-            onChangeKey = {
-                Prefs.setClientId(context, "")
-                clientId = ""
-            }
-        )
-    }
+    MainScreen()
 }
 
 // ---------------------------------------------------------------- first launch
 
 @Composable
-private fun SetupScreen(onSave: (String) -> Unit) {
+private fun KeyCard(onSave: (String) -> Unit) {
     val context = LocalContext.current
     var text by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(28.dp),
-        verticalArrangement = Arrangement.Center
+            .fillMaxWidth()
+            .padding(28.dp)
     ) {
         Text(
-            text = "Free Music",
-            style = MaterialTheme.typography.headlineLarge,
+            text = "Jamendo key chahiye",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            text = "Ye app Jamendo se Creative Commons licensed music stream karta hai. " +
-                "Chalane ke liye ek free API key chahiye — 2 minute ka kaam hai.",
+            text = "Jamendo se Creative Commons music chalane ke liye ek free API key chahiye — " +
+                "2 minute ka kaam hai. Audius tab bina key ke chalta rehta hai.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -166,7 +154,7 @@ private fun SetupScreen(onSave: (String) -> Unit) {
             enabled = text.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Shuru karein")
+            Text("Key save karein")
         }
     }
 }
@@ -186,16 +174,23 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
 
     private var job: Job? = null
 
-    fun load(query: String?, tag: String?) {
-        val clientId = Prefs.clientId(getApplication())
-        if (clientId.isBlank()) return
-
+    fun load(source: MusicSource, query: String?, tag: String?) {
         job?.cancel()
         job = viewModelScope.launch {
             _loading.value = true
             _error.value = null
             try {
-                val list = Jamendo.fetch(clientId, query, tag)
+                val list = when (source) {
+                    MusicSource.AUDIUS -> Audius.fetch(query, tag)
+                    MusicSource.JAMENDO -> {
+                        val clientId = Prefs.clientId(getApplication())
+                        if (clientId.isBlank()) {
+                            _error.value = "Jamendo ke liye API key chahiye."
+                            return@launch
+                        }
+                        Jamendo.fetch(clientId, query, tag)
+                    }
+                }
                 _tracks.value = list
                 if (list.isEmpty()) _error.value = "Is search ke liye kuch nahi mila."
             } catch (e: Exception) {
@@ -210,8 +205,9 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
 // ---------------------------------------------------------------- main screen
 
 @Composable
-private fun MainScreen(onChangeKey: () -> Unit) {
+private fun MainScreen() {
 
+    val context = LocalContext.current
     val browse: BrowseViewModel = viewModel()
     val player: PlayerViewModel = viewModel()
 
@@ -223,9 +219,17 @@ private fun MainScreen(onChangeKey: () -> Unit) {
     var searchText by remember { mutableStateOf("") }
     var activeGenre by remember { mutableStateOf<String?>(null) }
     var showPlayer by remember { mutableStateOf(false) }
+    var source by remember { mutableStateOf(MusicSource.AUDIUS) }
+    var jamendoKey by remember { mutableStateOf(Prefs.clientId(context)) }
+    var showKey by remember { mutableStateOf(false) }
 
-    LaunchedEffect(activeGenre) {
-        browse.load(null, activeGenre)
+    LaunchedEffect(source, activeGenre, jamendoKey) {
+        if (source == MusicSource.JAMENDO && jamendoKey.isBlank()) {
+            showKey = true
+        } else {
+            showKey = false
+            browse.load(source, null, activeGenre)
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -245,10 +249,10 @@ private fun MainScreen(onChangeKey: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onChangeKey) {
+                IconButton(onClick = { showKey = !showKey }) {
                     Icon(
                         Icons.Default.Settings,
-                        contentDescription = "Change API key",
+                        contentDescription = "Jamendo API key",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -264,12 +268,28 @@ private fun MainScreen(onChangeKey: () -> Unit) {
                 shape = RoundedCornerShape(14.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
-                    onSearch = { browse.load(searchText, activeGenre) }
+                    onSearch = { browse.load(source, searchText, activeGenre) }
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             )
+
+            // Music source
+            LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(MusicSource.values().toList()) { s ->
+                    FilterChip(
+                        selected = source == s,
+                        onClick = { source = s },
+                        label = { Text(s.label) }
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
 
             // Genres
             LazyRow(
@@ -281,7 +301,7 @@ private fun MainScreen(onChangeKey: () -> Unit) {
                         selected = activeGenre == genre.second,
                         onClick = {
                             activeGenre = genre.second
-                            if (searchText.isNotBlank()) browse.load(searchText, genre.second)
+                            if (searchText.isNotBlank()) browse.load(source, searchText, genre.second)
                         },
                         label = { Text(genre.first) }
                     )
@@ -293,6 +313,11 @@ private fun MainScreen(onChangeKey: () -> Unit) {
             // Content
             Box(Modifier.weight(1f)) {
                 when {
+                    showKey -> KeyCard(onSave = { id ->
+                        Prefs.setClientId(context, id)
+                        jamendoKey = id.trim()
+                    })
+
                     loading -> CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -309,7 +334,7 @@ private fun MainScreen(onChangeKey: () -> Unit) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.height(12.dp))
-                        Button(onClick = { browse.load(searchText, activeGenre) }) {
+                        Button(onClick = { browse.load(source, searchText, activeGenre) }) {
                             Text("Dobara koshish karein")
                         }
                     }
