@@ -20,7 +20,7 @@ emulator nahi tha._
 
 ## Download
 
-Prebuilt APK: [**FreeMusic-1.4.apk**](https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest)
+Prebuilt APK: [**FreeMusic-1.7.apk**](https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest)
 
 Install karne ke liye phone par "Install unknown apps" allow karna padega.
 Debug key se signed hai — apna release build banane ke liye neeche dekhein.
@@ -105,6 +105,12 @@ Kuch files repo mein padi hain par UI se hata di gayi hain: `data/Jamendo.kt`,
 Audius expose hain.
 
 ## Changelog
+
+**v1.7** — Poora naya UI: "liquid glass" design. Ambient gradient blobs, glass surfaces,
+hero heading, segmented source control, gloss artwork cards with a play badge (playing
+card par animated equalizer), glass mini player with a progress line, aur naya
+now-playing screen. Note: Android mein true backdrop-blur nahi hota, is liye glass
+translucent surfaces + gradient hairlines se approximate kiya gaya hai.
 
 **v1.6** — Sirf Archive aur Audius (ccMixter, Musopen, Radio hata diye — wo chal nahi rahe
 the). Archive ki query ab music-only hai: sirf netlabel/music/live-concert/78rpm
