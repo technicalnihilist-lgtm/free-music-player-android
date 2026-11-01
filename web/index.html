@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B10">
+<title>Free Music — Archive + Audius</title>
+<style>
+  :root{
+    --bg:#0B0B10; --surface:#16161F; --surface2:#22222E; --line:#2E2E3C;
+    --text:#EDEDF2; --muted:#B6B6C4; --primary:#7C4DFF; --accent:#00E0B8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--text); overflow:hidden;
+    font-family:Inter,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column;
+  }
+  header{padding:18px 20px 0;flex:none}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand h1{font-size:23px;font-weight:700;letter-spacing:-.3px}
+  .brand span{font-size:11.5px;color:var(--muted)}
+  .search{margin-top:14px;display:flex;align-items:center;gap:10px;
+    border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:transparent}
+  .search input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font-size:14px;font-family:inherit}
+  .search input::placeholder{color:#7A7A8C}
+  .search svg{width:18px;height:18px;fill:var(--muted);flex:none}
+  .chips{display:flex;gap:8px;margin-top:14px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);border-radius:9px;padding:7px 14px;font-size:13px;
+    color:var(--muted);background:transparent;cursor:pointer;font-family:inherit;transition:.15s}
+  .chip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600}
+  main{flex:1;overflow-y:auto;padding:14px 16px 120px;-webkit-overflow-scrolling:touch}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px 12px}
+  @media(min-width:620px){.grid{grid-template-columns:repeat(3,1fr)}}
+  @media(min-width:900px){.grid{grid-template-columns:repeat(4,1fr)}}
+  .card{cursor:pointer;min-width:0}
+  .art{width:100%;aspect-ratio:1;border-radius:14px;background:var(--surface2);
+    object-fit:cover;display:block;position:relative;overflow:hidden}
+  .artwrap{position:relative;border-radius:14px;overflow:hidden;background:var(--surface2)}
+  .artwrap::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);border-radius:14px}
+  .card h3{font-size:13.5px;font-weight:600;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card p{font-size:11.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card.playing h3{color:var(--primary)}
+  .msg{text-align:center;color:var(--muted);padding:48px 24px;font-size:14px;line-height:1.6}
+  .spinner{width:26px;height:26px;border:2px solid var(--line);border-top-color:var(--primary);
+    border-radius:50%;margin:48px auto;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  footer{position:fixed;left:0;right:0;bottom:0;background:var(--surface);
+    border-radius:18px 18px 0 0;padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+    transform:translateY(110%);transition:transform .25s ease;z-index:20}
+  footer.show{transform:translateY(0)}
+  .bar{display:flex;align-items:center;gap:12px}
+  .bar img{width:46px;height:46px;border-radius:9px;object-fit:cover;background:var(--surface2);flex:none}
+  .meta{flex:1;min-width:0}
+  .meta h4{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta p{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  button.icon{background:transparent;border:0;cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center}
+  button.icon svg{width:26px;height:26px;fill:var(--text)}
+  .seek{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:11px;color:var(--muted)}
+  .seek input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--line);outline:0}
+  .seek input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+    border-radius:50%;background:var(--primary);cursor:pointer}
+  .seek input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--primary)}
+  .toast{position:fixed;left:50%;bottom:130px;transform:translateX(-50%) translateY(20px);
+    background:var(--surface2);color:var(--text);font-size:13px;padding:10px 16px;border-radius:12px;
+    opacity:0;pointer-events:none;transition:.25s;z-index:30;max-width:88vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Free Music</h1>
+    <span id="srcLabel">Internet Archive</span>
+  </div>
+  <form class="search" id="searchForm" role="search">
+    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+    <input id="q" type="search" placeholder="Gaana, artist ya album dhoondein" autocomplete="off">
+  </form>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main id="main">
+  <div class="spinner"></div>
+</main>
+
+<footer id="bar">
+  <div class="bar">
+    <img id="barArt" alt="">
+    <div class="meta">
+      <h4 id="barTitle">—</h4>
+      <p id="barArtist"></p>
+    </div>
+    <button class="icon" id="prev" aria-label="Previous">
+      <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+    </button>
+    <button class="icon" id="playPause" aria-label="Play / pause">
+      <svg viewBox="0 0 24 24" id="ppIcon"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+    <button class="icon" id="next" aria-label="Next">
+      <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+    </button>
+  </div>
+  <div class="seek">
+    <span id="cur">0:00</span>
+    <input id="seek" type="range" min="0" max="1000" value="0" step="1">
+    <span id="dur">0:00</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<audio id="audio" preload="none"></audio>
+
+<script>
+"use strict";
+
+const APP_NAME = "FreeMusicWeb";
+
+/* ---------- tiny helpers ---------- */
+const $ = id => document.getElementById(id);
+const main = $("main"), audio = $("audio"), bar = $("bar");
+
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+function fmt(sec) {
+  if (!isFinite(sec) || sec <= 0) return "0:00";
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return m + ":" + String(s).padStart(2, "0");
+}
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/* ---------- sources ---------- */
+
+// Same music-only query the Android app uses: netlabels, music, live concerts, 78rpm,
+// with the big spoken-word collections excluded so the grid stays actual music.
+const MUSIC_ONLY =
+  "mediatype:(audio) AND format:(MP3) AND (" +
+  "collection:(netlabels) OR collection:(audio_music) OR collection:(etree) OR " +
+  "collection:(georgeblood) OR collection:(78rpm) OR collection:(opensource_audio)" +
+  ") AND NOT collection:(librivox) AND NOT collection:(audio_bookspoetry) AND " +
+  "NOT collection:(podcasts) AND NOT collection:(radioprograms) AND " +
+  "NOT collection:(oldtimeradio) AND NOT collection:(audio_news) AND " +
+  "NOT collection:(audio_foreign)";
+
+const SOURCES = {
+  archive: {
+    label: "Internet Archive",
+    async list(query) {
+      const q = query ? `${MUSIC_ONLY} AND (${query})` : MUSIC_ONLY;
+      const url = new URL("https://archive.org/advancedsearch.php");
+      url.searchParams.append("q", q);
+      ["identifier", "title", "creator"].forEach(f => url.searchParams.append("fl[]", f));
+      url.searchParams.set("rows", "100");
+      url.searchParams.set("page", "1");
+      url.searchParams.append("sort[]", "downloads desc");
+      url.searchParams.set("output", "json");
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Archive error " + res.status);
+      const json = await res.json();
+      const docs = (json.response && json.response.docs) || [];
+      return docs.filter(d => d.identifier).map(d => ({
+        id: d.identifier,
+        title: first(d.title) || d.identifier,
+        artist: first(d.creator) || "Internet Archive",
+        art: "https://archive.org/services/img/" + encodeURIComponent(d.identifier),
+        // Archive's real MP3 URL is per item, so it is resolved on tap.
+        lazy: true,
+        url: ""
+      }));
+    },
+    async resolve(track) {
+      const res = await fetch("https://archive.org/metadata/" + encodeURIComponent(track.id));
+      if (!res.ok) throw new Error("Metadata error " + res.status);
+      const json = await res.json();
+      const files = json.files || [];
+      const mp3 = files.find(f =>
+        /\.mp3$/i.test(f.name || "") &&
+        (/mp3|vbr/i.test(f.format || ""))
+      );
+      if (!mp3) throw new Error("Is item mein MP3 file nahi mili");
+      return "https://archive.org/download/" + encodeURIComponent(track.id) +
+             "/" + encodeURIComponent(mp3.name).replace(/%2F/g, "/");
+    }
+  },
+
+  audius: {
+    label: "Audius",
+    async list(query) {
+      const base = "https://api.audius.co/v1";
+      const path = query ? "/tracks/search" : "/tracks/trending";
+      const url = new URL(base + path);
+      url.searchParams.set("app_name", APP_NAME);
+      url.searchParams.set("limit", "100");
+      if (query) url.searchParams.set("query", query);
+      else url.searchParams.set("time", "week");
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Audius error " + res.status);
+      const json = await res.json();
+      const data = json.data || [];
+      return data.filter(t => t.is_streamable !== false && t.id).map(t => ({
+        id: t.id,
+        title: t.title || "Untitled",
+        artist: (t.user && (t.user.name || t.user.handle)) || "Audius",
+        art: (t.artwork && (t.artwork["480x480"] || t.artwork["150x150"])) || "",
+        lazy: false,
+        url: base + "/tracks/" + encodeURIComponent(t.id) + "/stream?app_name=" + APP_NAME
+      }));
+    },
+    resolve: null
+  }
+};
+
+function first(v) {
+  if (v == null) return "";
+  if (Array.isArray(v)) return v.find(x => typeof x === "string" && x.trim()) || "";
+  return String(v);
+}
+
+/* ---------- state ---------- */
+const state = { source: "archive", tracks: [], index: -1, loading: false };
+
+/* ---------- rendering ---------- */
+function renderChips() {
+  $("chips").innerHTML = Object.entries(SOURCES).map(([key, s]) =>
+    `<button class="chip ${key === state.source ? "on" : ""}" data-src="${key}">${esc(s.label)}</button>`
+  ).join("");
+  $("srcLabel").textContent = SOURCES[state.source].label;
+}
+
+function renderGrid() {
+  if (!state.tracks.length) {
+    main.innerHTML = `<div class="msg">Kuch nahi mila.<br>Doosra source try karein ya kuch aur search karein.</div>`;
+    return;
+  }
+  const html = state.tracks.map((t, i) => `
+    <div class="card ${i === state.index ? "playing" : ""}" data-i="${i}">
+      <div class="artwrap">
+        ${t.art
+          ? `<img class="art" src="${esc(t.art)}" alt="" loading="lazy"
+                  onerror="this.style.display='none'">`
+          : `<div class="art"></div>`}
+      </div>
+      <h3>${esc(t.title)}</h3>
+      <p>${esc(t.artist)}</p>
+    </div>`).join("");
+  main.innerHTML = `<div class="grid">${html}</div>`;
+}
+
+async function load(query) {
+  state.loading = true;
+  state.tracks = [];
+  state.index = -1;
+  main.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const list = await SOURCES[state.source].list(query);
+    state.tracks = list;
+    state.loading = false;
+    renderGrid();
+  } catch (err) {
+    state.loading = false;
+    main.innerHTML = `<div class="msg">${esc(err.message || "Load nahi hua")}.<br>
+      Internet check karein, ya doosra source try karein.</div>`;
+  }
+}
+
+/* ---------- playback ---------- */
+async function play(i) {
+  const t = state.tracks[i];
+  if (!t) return;
+  state.index = i;
+  bar.classList.add("show");
+  $("barTitle").textContent = t.title;
+  $("barArtist").textContent = t.artist;
+  $("barArt").src = t.art || "";
+  renderGrid();
+
+  let url = t.url;
+  if (t.lazy) {
+    toast("Load ho raha hai…");
+    try {
+      url = await SOURCES[state.source].resolve(t);
+      t.url = url;
+      t.lazy = false;
+    } catch (e) {
+      toast(e.message || "Audio nahi mila");
+      return;
+    }
+  }
+
+  audio.src = url;
+  audio.play().catch(() => toast("Play nahi hua — dobara tap karein"));
+}
+
+function setPlayIcon(playing) {
+  $("ppIcon").innerHTML = playing
+    ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
+    : '<path d="M8 5v14l11-7z"/>';
+}
+
+audio.addEventListener("play", () => setPlayIcon(true));
+audio.addEventListener("pause", () => setPlayIcon(false));
+audio.addEventListener("ended", () => {
+  if (state.index + 1 < state.tracks.length) play(state.index + 1);
+});
+audio.addEventListener("timeupdate", () => {
+  const d = audio.duration;
+  if (isFinite(d) && d > 0) {
+    $("seek").value = Math.round((audio.currentTime / d) * 1000);
+    $("dur").textContent = fmt(d);
+  }
+  $("cur").textContent = fmt(audio.currentTime);
+});
+audio.addEventListener("error", () => {
+  if (audio.src) toast("Ye stream nahi chal raha");
+});
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const chip = e.target.closest(".chip");
+  if (chip) {
+    state.source = chip.dataset.src;
+    renderChips();
+    load($("q").value.trim());
+    return;
+  }
+  const card = e.target.closest(".card");
+  if (card) play(Number(card.dataset.i));
+});
+
+$("searchForm").addEventListener("submit", e => {
+  e.preventDefault();
+  load($("q").value.trim());
+});
+
+let debounce;
+$("q").addEventListener("input", () => {
+  clearTimeout(debounce);
+  debounce = setTimeout(() => {
+    if ($("q").value.trim().length >= 3) load($("q").value.trim());
+  }, 650);
+});
+
+$("playPause").addEventListener("click", () => {
+  if (!audio.src) { if (state.tracks.length) play(0); return; }
+  audio.paused ? audio.play() : audio.pause();
+});
+$("next").addEventListener("click", () => {
+  if (state.index + 1 < state.tracks.length) play(state.index + 1);
+});
+$("prev").addEventListener("click", () => {
+  if (state.index > 0) play(state.index - 1);
+});
+$("seek").addEventListener("input", () => {
+  const d = audio.duration;
+  if (isFinite(d) && d > 0) audio.currentTime = ($("seek").value / 1000) * d;
+});
+
+/* ---------- boot ---------- */
+renderChips();
+load("");
+</script>
+</body>
+</html>
