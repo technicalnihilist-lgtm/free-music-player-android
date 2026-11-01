@@ -1,8 +1,8 @@
 # Free Music — Android music player
 
-Ek chhota, pura chalne wala Android music player jo **paanch free, keyless sources** se
-chalta hai: Internet Archive, Audius, ccMixter, Musopen aur Radio Browser. App khulte hi
-album artwork ka grid dikhta hai. Kotlin + Jetpack Compose + Media3 (ExoPlayer).
+Ek chhota, pura chalne wala Android music player jo **do free, keyless sources** se
+chalta hai: **Internet Archive** aur **Audius**. App khulte hi album artwork ka grid
+dikhta hai. Kotlin + Jetpack Compose + Media3 (ExoPlayer).
 
 > **Legal note:** commercial catalog (Bollywood / Hollywood) kisi bhi app se free nahi
 > chalaya ja sakta — uske liye licensed platform chahiye. Ye app sirf wahi music bajata
@@ -31,17 +31,18 @@ Dono sources **bina kisi API key, bina signup, bina account** ke chalte hain.
 
 | Source | Catalog |
 |---|---|
-| **Archive** (default) | Public domain aur Creative Commons audio — live concert recordings, 78rpm records, netlabels, old radio |
+| **Archive** (default) | Public domain aur Creative Commons **music** — netlabels, live concert recordings (etree), 78rpm transfers |
 | **Audius** | Open catalog, artists ke apne uploads; trending aur search |
-| **ccMixter** | Creative Commons remix community — a cappellas, stems, remixes, full tracks |
-| **Musopen** | Public domain classical recordings (archive.org ke `musopen` collection se) |
-| **Radio** | Radio Browser — hazaaron internet radio stations, live streams |
 
 App khulte hi **Archive** load hota hai; upar ke chips se **Audius** par switch kar sakte
 hain. Dono jagah 2-column artwork grid, tap karke bajayein.
 
-**Archive ke baare mein:** listing sasti hai, par asli MP3 ka URL har item ke andar alag
-hota hai. Is liye list turant dikhti hai aur audio tap karne par resolve hota hai
+**Archive ke baare mein:** query sirf music collections tak seemit hai — `netlabels`,
+`audio_music`, `etree` (live concerts), `georgeblood`/`78rpm` — aur `librivox`,
+`audio_bookspoetry`, `podcasts`, `radioprograms`, `oldtimeradio`, `audio_news` jaise
+spoken-word collections explicitly exclude hain. Results downloads ke hisaab se sort hote
+hain, taaki grid mein asli music aaye. Listing sasti hai, par asli MP3 ka URL har item ke
+andar alag hota hai, is liye audio tap karne par resolve hota hai
 (`archive.org/metadata/{id}`), phir player ko diya jaata hai.
 
 **Audius ke baare mein:** read API mein har request par sirf ek `app_name` string jaati
@@ -52,7 +53,9 @@ hosts order se try karta hai.
 ## Features
 
 - App khulte hi **album artwork ka 2-column grid**
-- Paanch free sources: Archive, Audius, ccMixter, Musopen, Radio — sab keyless
+- Do free sources: Archive aur Audius — dono keyless
+- Archive par **sirf music** — speeches, audiobooks, podcasts, old radio drama aur
+  personal recordings filter ho jaate hain
 - Search — gaana, artist ya album ke naam se
 - Background playback + notification aur lock-screen controls (Media3 MediaSession)
 - Play / pause, next / previous, seek bar, shuffle, repeat-all
@@ -87,10 +90,8 @@ Ya Android Studio mein `File > Open` → sync → `Build > Build APK(s)`.
 ```
 app/src/main/java/com/freemusic/player/
   MainActivity.kt              entry point, notification permission
-  data/InternetArchive.kt      archive.org search + lazy MP3 resolution (also Musopen)
+  data/InternetArchive.kt      archive.org music search + lazy MP3 resolution
   data/Audius.kt               Audius API (no key) + node failover
-  data/CcMixter.kt             ccHost Query API, defensive JSON parsing
-  data/RadioBrowser.kt         radio station directory + mirror failover
   player/PlaybackService.kt    Media3 background service + notification
   player/PlayerViewModel.kt    MediaController + UI state flow
   ui/App.kt                    Compose UI (artwork grid, mini player, player)
@@ -98,11 +99,17 @@ app/src/main/java/com/freemusic/player/
   ui/theme/Theme.kt            dark colour scheme
 ```
 
-Jamendo aur Spotify ke files (`data/Jamendo.kt`, `data/SpotifyAuth.kt`,
-`data/SpotifyApi.kt`, `data/Prefs.kt`) repo mein pade hain par UI se hata diye gaye hain
-— v1.2/v1.3 releases mein wo chal rahe the.
+Kuch files repo mein padi hain par UI se hata di gayi hain: `data/Jamendo.kt`,
+`data/SpotifyAuth.kt`, `data/SpotifyApi.kt`, `data/Prefs.kt`, `data/CcMixter.kt`,
+`data/RadioBrowser.kt`. Ye purane releases mein chal rahe the; v1.6 mein sirf Archive aur
+Audius expose hain.
 
 ## Changelog
+
+**v1.6** — Sirf Archive aur Audius (ccMixter, Musopen, Radio hata diye — wo chal nahi rahe
+the). Archive ki query ab music-only hai: sirf netlabel/music/live-concert/78rpm
+collections, spoken-word collections excluded, aur downloads ke hisaab se sorted. Results
+60 se 100 kar diye.
 
 **v1.5** — Paanch keyless sources: Archive, Audius, ccMixter, Musopen (archive.org ka
 `musopen` collection), aur Radio Browser. Jamendo aur Spotify UI se bahar rakhe gaye.
