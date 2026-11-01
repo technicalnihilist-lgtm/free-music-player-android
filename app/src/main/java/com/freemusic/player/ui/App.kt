@@ -85,6 +85,9 @@ enum class MusicSource(val label: String) {
     SPOTIFY("Spotify")
 }
 
+// Jamendo and Spotify stay out of this build; these two are free and keyless.
+private val SOURCES = listOf(MusicSource.ARCHIVE, MusicSource.AUDIUS)
+
 private val GENRES = listOf(
     "All" to null,
     "Pop" to "pop",
@@ -285,7 +288,7 @@ private fun MainScreen() {
     var searchText by remember { mutableStateOf("") }
     var activeGenre by remember { mutableStateOf<String?>(null) }
     var showPlayer by remember { mutableStateOf(false) }
-    var source by remember { mutableStateOf(MusicSource.AUDIUS) }
+    var source by remember { mutableStateOf(MusicSource.ARCHIVE) }
     var jamendoKey by remember { mutableStateOf(Prefs.clientId(context)) }
     var showKey by remember { mutableStateOf(false) }
     var spotifyReady by remember { mutableStateOf(Prefs.spotifyRefreshToken(context).isNotBlank()) }
@@ -327,17 +330,16 @@ private fun MainScreen() {
                     .padding(start = 20.dp, end = 8.dp, top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Free Music",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = { showKey = !showKey }) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Jamendo API key",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Free Music",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = source.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -359,35 +361,16 @@ private fun MainScreen() {
                     .padding(horizontal = 20.dp, vertical = 12.dp)
             )
 
-            // Music source
+            // Source switcher
             LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(MusicSource.values().toList()) { s ->
+                items(SOURCES) { s ->
                     FilterChip(
                         selected = source == s,
                         onClick = { source = s },
                         label = { Text(s.label) }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Genres
-            LazyRow(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(GENRES) { genre ->
-                    FilterChip(
-                        selected = activeGenre == genre.second,
-                        onClick = {
-                            activeGenre = genre.second
-                            if (searchText.isNotBlank()) browse.load(source, searchText, genre.second)
-                        },
-                        label = { Text(genre.first) }
                     )
                 }
             }
