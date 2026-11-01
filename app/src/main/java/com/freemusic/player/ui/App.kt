@@ -65,9 +65,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.freemusic.player.data.Audius
+import com.freemusic.player.data.CcMixter
 import com.freemusic.player.data.InternetArchive
 import com.freemusic.player.data.Jamendo
 import com.freemusic.player.data.Prefs
+import com.freemusic.player.data.RadioBrowser
 import com.freemusic.player.data.SpotifyApi
 import com.freemusic.player.data.SpotifyAuth
 import com.freemusic.player.data.Track
@@ -79,14 +81,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class MusicSource(val label: String) {
-    AUDIUS("Audius"),
     ARCHIVE("Archive"),
+    AUDIUS("Audius"),
     JAMENDO("Jamendo"),
+    CCMIXTER("ccMixter"),
+    MUSOPEN("Musopen"),
+    RADIO("Radio"),
     SPOTIFY("Spotify")
 }
 
-// Jamendo and Spotify stay out of this build; these two are free and keyless.
-private val SOURCES = listOf(MusicSource.ARCHIVE, MusicSource.AUDIUS)
+// Only free / open catalogues are exposed. Jamendo and Spotify code stays in the
+// repo but is not shown in the UI.
+private val SOURCES = listOf(
+    MusicSource.ARCHIVE,
+    MusicSource.AUDIUS,
+    MusicSource.CCMIXTER,
+    MusicSource.MUSOPEN,
+    MusicSource.RADIO
+)
 
 private val GENRES = listOf(
     "All" to null,
@@ -259,6 +271,9 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
                         SpotifyApi.search(token, query.orEmpty())
                     }
                     MusicSource.ARCHIVE -> InternetArchive.fetch(query)
+                    MusicSource.MUSOPEN -> InternetArchive.fetch(query, "musopen")
+                    MusicSource.CCMIXTER -> CcMixter.fetch(query)
+                    MusicSource.RADIO -> RadioBrowser.fetch(query)
                 }
                 _tracks.value = list
                 if (list.isEmpty()) _error.value = "Is search ke liye kuch nahi mila."
@@ -439,7 +454,8 @@ private fun MainScreen() {
                                 onClick = {
                                     when (source) {
                                         MusicSource.SPOTIFY -> browse.playOnSpotify(track)
-                                        MusicSource.ARCHIVE -> browse.resolveArchive(track)
+                                        MusicSource.ARCHIVE, MusicSource.MUSOPEN ->
+                                            browse.resolveArchive(track)
                                         else -> {
                                             player.play(tracks, index)
                                             showPlayer = true
