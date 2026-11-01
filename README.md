@@ -1,7 +1,8 @@
 # Free Music — Android music player
 
-Ek chhota, pura chalne wala Android music player jo teen sources se chalta hai:
-**Audius** (bina key), **Jamendo** (free key) aur **Spotify** (aapka Client ID + Premium).
+Ek chhota, pura chalne wala Android music player jo chaar sources se chalta hai:
+**Audius** (bina key), **Internet Archive** (bina key), **Jamendo** (free key) aur
+**Spotify** (aapka Client ID + Premium). App khulte hi album artwork ka grid dikhta hai.
 Kotlin + Jetpack Compose + Media3 (ExoPlayer).
 
 > **Legal note:** commercial catalog (Bollywood / Hollywood) kisi bhi app se free nahi
@@ -21,7 +22,7 @@ emulator nahi tha._
 
 ## Download
 
-Prebuilt APK: [**FreeMusic-1.2.apk**](https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest)
+Prebuilt APK: [**FreeMusic-1.3.apk**](https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest)
 
 Install karne ke liye phone par "Install unknown apps" allow karna padega.
 Debug key se signed hai — apna release build banane ke liye neeche dekhein.
@@ -31,6 +32,7 @@ Debug key se signed hai — apna release build banane ke liye neeche dekhein.
 | Source | Key chahiye? | Audio kahan se | Catalog |
 |---|---|---|---|
 | **Audius** (default) | Nahi — bas `app_name` string | Seedha app mein (ExoPlayer) | Open catalog, artists ke apne uploads |
+| **Internet Archive** | Nahi | Seedha app mein (ExoPlayer) | Public domain + Creative Commons audio, live concerts, 78rpm, netlabels |
 | **Jamendo** | Haan, free Client ID | Seedha app mein (ExoPlayer) | 600,000+ Creative Commons tracks |
 | **Spotify** | Haan, Client ID + **Premium** | Spotify app ke andar | Poora licensed catalog |
 
@@ -66,7 +68,8 @@ player Spotify source par laagu nahi hote; wo controls Spotify app mein hain.
 
 ## Features
 
-- Teen sources: Audius (default, keyless), Jamendo, Spotify
+- Chaar sources: Audius (default, keyless), Internet Archive, Jamendo, Spotify
+- App khulte hi **album artwork ka 2-column grid** — tap karke bajayein
 - Search — gaana, artist ya album ke naam se
 - Genre filter — Pop, Rock, Electronic, Hip-Hop, Jazz, Classical, Ambient, Lounge, World
 - Background playback + notification aur lock-screen controls (Media3 MediaSession)
@@ -103,6 +106,7 @@ Ya Android Studio mein `File > Open` → sync → `Build > Build APK(s)`.
 app/src/main/java/com/freemusic/player/
   MainActivity.kt              entry point, notifications, Spotify redirect handling
   data/Audius.kt               Audius API (no key) + node failover
+  data/InternetArchive.kt      archive.org search + lazy MP3 resolution
   data/Jamendo.kt              Jamendo API + JSON parsing
   data/SpotifyAuth.kt          Authorization Code + PKCE login (no client secret)
   data/SpotifyApi.kt           Web API search + play-on-device
@@ -115,6 +119,10 @@ app/src/main/java/com/freemusic/player/
 ```
 
 ## Changelog
+
+**v1.3** — Home screen ab album artwork ka 2-column grid hai, app khulte hi load hota
+hai. Internet Archive source add hua (keyless, public domain + CC audio); uske MP3 URL
+per item lazily resolve hote hain, is liye list turant dikhti hai.
 
 **v1.2** — Spotify source: PKCE login, catalog search, play on active Spotify device
 (Premium + Spotify app required). Note: the official `spotify-auth` 2.1.0 AAR was not
