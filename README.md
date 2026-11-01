@@ -1,8 +1,8 @@
 # Free Music — Android music player
 
-Ek chhota, pura chalne wala Android music player jo do free, keyless sources se chalta
-hai: **Internet Archive** (archive.org) aur **Audius**. App khulte hi album artwork ka
-grid dikhta hai. Kotlin + Jetpack Compose + Media3 (ExoPlayer).
+Ek chhota, pura chalne wala Android music player jo **paanch free, keyless sources** se
+chalta hai: Internet Archive, Audius, ccMixter, Musopen aur Radio Browser. App khulte hi
+album artwork ka grid dikhta hai. Kotlin + Jetpack Compose + Media3 (ExoPlayer).
 
 > **Legal note:** commercial catalog (Bollywood / Hollywood) kisi bhi app se free nahi
 > chalaya ja sakta — uske liye licensed platform chahiye. Ye app sirf wahi music bajata
@@ -31,8 +31,11 @@ Dono sources **bina kisi API key, bina signup, bina account** ke chalte hain.
 
 | Source | Catalog |
 |---|---|
-| **Internet Archive** (default) | Public domain aur Creative Commons audio — live concert recordings, 78rpm records, netlabels, classical, old radio |
+| **Archive** (default) | Public domain aur Creative Commons audio — live concert recordings, 78rpm records, netlabels, old radio |
 | **Audius** | Open catalog, artists ke apne uploads; trending aur search |
+| **ccMixter** | Creative Commons remix community — a cappellas, stems, remixes, full tracks |
+| **Musopen** | Public domain classical recordings (archive.org ke `musopen` collection se) |
+| **Radio** | Radio Browser — hazaaron internet radio stations, live streams |
 
 App khulte hi **Archive** load hota hai; upar ke chips se **Audius** par switch kar sakte
 hain. Dono jagah 2-column artwork grid, tap karke bajayein.
@@ -49,7 +52,7 @@ hosts order se try karta hai.
 ## Features
 
 - App khulte hi **album artwork ka 2-column grid**
-- Do free sources: Internet Archive aur Audius — dono keyless
+- Paanch free sources: Archive, Audius, ccMixter, Musopen, Radio — sab keyless
 - Search — gaana, artist ya album ke naam se
 - Background playback + notification aur lock-screen controls (Media3 MediaSession)
 - Play / pause, next / previous, seek bar, shuffle, repeat-all
@@ -84,8 +87,10 @@ Ya Android Studio mein `File > Open` → sync → `Build > Build APK(s)`.
 ```
 app/src/main/java/com/freemusic/player/
   MainActivity.kt              entry point, notification permission
-  data/InternetArchive.kt      archive.org search + lazy MP3 resolution
+  data/InternetArchive.kt      archive.org search + lazy MP3 resolution (also Musopen)
   data/Audius.kt               Audius API (no key) + node failover
+  data/CcMixter.kt             ccHost Query API, defensive JSON parsing
+  data/RadioBrowser.kt         radio station directory + mirror failover
   player/PlaybackService.kt    Media3 background service + notification
   player/PlayerViewModel.kt    MediaController + UI state flow
   ui/App.kt                    Compose UI (artwork grid, mini player, player)
@@ -98,6 +103,9 @@ Jamendo aur Spotify ke files (`data/Jamendo.kt`, `data/SpotifyAuth.kt`,
 — v1.2/v1.3 releases mein wo chal rahe the.
 
 ## Changelog
+
+**v1.5** — Paanch keyless sources: Archive, Audius, ccMixter, Musopen (archive.org ka
+`musopen` collection), aur Radio Browser. Jamendo aur Spotify UI se bahar rakhe gaye.
 
 **v1.4** — Sirf do keyless sources: Internet Archive (default) aur Audius. Jamendo aur
 Spotify UI se hata diye (code repo mein hai). App khulte hi artwork grid.
