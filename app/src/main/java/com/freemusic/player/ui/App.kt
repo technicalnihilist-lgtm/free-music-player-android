@@ -65,6 +65,8 @@ import coil.compose.AsyncImage
 import com.freemusic.player.data.Audius
 import com.freemusic.player.data.Jamendo
 import com.freemusic.player.data.Prefs
+import com.freemusic.player.data.SpotifyApi
+import com.freemusic.player.data.SpotifyAuth
 import com.freemusic.player.data.Track
 import com.freemusic.player.player.PlayerUiState
 import com.freemusic.player.player.PlayerViewModel
@@ -75,7 +77,8 @@ import kotlinx.coroutines.launch
 
 enum class MusicSource(val label: String) {
     AUDIUS("Audius"),
-    JAMENDO("Jamendo")
+    JAMENDO("Jamendo"),
+    SPOTIFY("Spotify")
 }
 
 private val GENRES = listOf(
@@ -172,7 +175,32 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
 
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice = _notice.asStateFlow()
+
     private var job: Job? = null
+
+    /** Spotify audio never enters this app — we ask the Spotify app to play it. */
+    fun playOnSpotify(track: Track) {
+        viewModelScope.launch {
+            _notice.value = "Spotify ko bhej rahe hain…"
+            val ctx = getApplication<Application>()
+            val token = SpotifyAuth.accessToken(ctx)
+            if (token == null) {
+                _notice.value = "Pehle Spotify se login karein."
+                return@launch
+            }
+            _notice.value = try {
+                SpotifyApi.playTrack(token, "spotify:track:${track.id}")
+            } catch (e: Exception) {
+                e.message ?: "Spotify error"
+            }
+        }
+    }
+
+    fun clearNotice() {
+        _notice.value = null
+    }
 
     fun load(source: MusicSource, query: String?, tag: String?) {
         job?.cancel()
@@ -189,6 +217,14 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
                             return@launch
                         }
                         Jamendo.fetch(clientId, query, tag)
+                    }
+                    MusicSource.SPOTIFY -> {
+                        val token = SpotifyAuth.accessToken(getApplication())
+                        if (token == null) {
+                            _error.value = "Spotify se login karein."
+                            return@launch
+                        }
+                        SpotifyApi.search(token, query.orEmpty())
                     }
                 }
                 _tracks.value = list
@@ -222,6 +258,14 @@ private fun MainScreen() {
     var source by remember { mutableStateOf(MusicSource.AUDIUS) }
     var jamendoKey by remember { mutableStateOf(Prefs.clientId(context)) }
     var showKey by remember { mutableStateOf(false) }
+    var spotifyReady by remember { mutableStateOf(Prefs.spotifyRefreshToken(context).isNotBlank()) }
+    val sessionVersion by SpotifyAuth.sessionVersion.collectAsStateWithLifecycle()
+    val notice by browse.notice.collectAsStateWithLifecycle()
+
+    LaunchedEffect(sessionVersion) {
+        spotifyReady = Prefs.spotifyRefreshToken(context).isNotBlank()
+        if (spotifyReady && source == MusicSource.SPOTIFY) browse.load(source, null, activeGenre)
+    }
 
     LaunchedEffect(source, activeGenre, jamendoKey) {
         if (source == MusicSource.JAMENDO && jamendoKey.isBlank()) {
@@ -318,6 +362,23 @@ private fun MainScreen() {
                         jamendoKey = id.trim()
                     })
 
+                    source == MusicSource.SPOTIFY && !spotifyReady -> SpotifyCard(
+                        onStart = { clientId ->
+                            Prefs.setSpotifyClientId(context, clientId)
+                            val verifier = SpotifyAuth.newVerifier()
+                            val authState = SpotifyAuth.newState()
+                            Prefs.setSpotifyPending(context, verifier, authState)
+                            runCatching {
+                                context.startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse(SpotifyAuth.authorizeUrl(clientId, verifier, authState))
+                                    )
+                                )
+                            }
+                        }
+                    )
+
                     loading -> CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -349,11 +410,41 @@ private fun MainScreen() {
                                 track = track,
                                 isCurrent = state.title == track.title && state.artist == track.artist,
                                 onClick = {
-                                    player.play(tracks, index)
-                                    showPlayer = true
+                                    if (source == MusicSource.SPOTIFY) {
+                                        browse.playOnSpotify(track)
+                                    } else {
+                                        player.play(tracks, index)
+                                        showPlayer = true
+                                    }
                                 }
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // Spotify notice (playback happens inside the Spotify app)
+        if (source == MusicSource.SPOTIFY) {
+            notice?.let { message ->
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { browse.clearNotice() }) { Text("OK") }
                     }
                 }
             }
@@ -617,6 +708,54 @@ private fun PlayerScreen(
         if (state.isBuffering) {
             Spacer(Modifier.height(20.dp))
             CircularProgressIndicator(modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+@Composable
+private fun SpotifyCard(onStart: (String) -> Unit) {
+    val context = LocalContext.current
+    var text by remember { mutableStateOf(Prefs.spotifyClientId(context)) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+    ) {
+        Text(
+            text = "Spotify se jodein",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = "Gaane Spotify app ke andar bajenge, is liye phone mein Spotify app aur " +
+                "account par Premium chahiye. Audio hamari app mein nahi aata — ye catalog " +
+                "browse karke Spotify ko play command bhejti hai.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("Spotify Client ID") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Dashboard mein redirect URI ye add karein:\n" + SpotifyAuth.REDIRECT_URI,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(18.dp))
+        Button(
+            onClick = { if (text.isNotBlank()) onStart(text.trim()) },
+            enabled = text.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Login with Spotify")
         }
     }
 }
