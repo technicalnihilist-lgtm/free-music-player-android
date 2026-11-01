@@ -94,10 +94,7 @@ enum class MusicSource(val label: String) {
 // repo but is not shown in the UI.
 private val SOURCES = listOf(
     MusicSource.ARCHIVE,
-    MusicSource.AUDIUS,
-    MusicSource.CCMIXTER,
-    MusicSource.MUSOPEN,
-    MusicSource.RADIO
+    MusicSource.AUDIUS
 )
 
 private val GENRES = listOf(
