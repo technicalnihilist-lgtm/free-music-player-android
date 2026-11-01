@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -63,6 +65,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.freemusic.player.data.Audius
+import com.freemusic.player.data.InternetArchive
 import com.freemusic.player.data.Jamendo
 import com.freemusic.player.data.Prefs
 import com.freemusic.player.data.SpotifyApi
@@ -77,6 +80,7 @@ import kotlinx.coroutines.launch
 
 enum class MusicSource(val label: String) {
     AUDIUS("Audius"),
+    ARCHIVE("Archive"),
     JAMENDO("Jamendo"),
     SPOTIFY("Spotify")
 }
@@ -178,7 +182,32 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
     private val _notice = MutableStateFlow<String?>(null)
     val notice = _notice.asStateFlow()
 
+    private val _pendingPlay = MutableStateFlow<Track?>(null)
+    val pendingPlay = _pendingPlay.asStateFlow()
+
     private var job: Job? = null
+
+    /** Archive audio URLs are only known per item, so resolve first, then play. */
+    fun resolveArchive(track: Track) {
+        viewModelScope.launch {
+            _notice.value = "Load ho raha hai…"
+            _notice.value = try {
+                val url = InternetArchive.resolveAudioUrl(track.id)
+                if (url == null) {
+                    "Is item mein MP3 file nahi mili."
+                } else {
+                    _pendingPlay.value = track.copy(audioUrl = url)
+                    null
+                }
+            } catch (e: Exception) {
+                e.message ?: "Archive error"
+            }
+        }
+    }
+
+    fun consumePendingPlay() {
+        _pendingPlay.value = null
+    }
 
     /** Spotify audio never enters this app — we ask the Spotify app to play it. */
     fun playOnSpotify(track: Track) {
@@ -226,6 +255,7 @@ class BrowseViewModel(app: Application) : AndroidViewModel(app) {
                         }
                         SpotifyApi.search(token, query.orEmpty())
                     }
+                    MusicSource.ARCHIVE -> InternetArchive.fetch(query)
                 }
                 _tracks.value = list
                 if (list.isEmpty()) _error.value = "Is search ke liye kuch nahi mila."
@@ -261,6 +291,16 @@ private fun MainScreen() {
     var spotifyReady by remember { mutableStateOf(Prefs.spotifyRefreshToken(context).isNotBlank()) }
     val sessionVersion by SpotifyAuth.sessionVersion.collectAsStateWithLifecycle()
     val notice by browse.notice.collectAsStateWithLifecycle()
+    val pendingPlay by browse.pendingPlay.collectAsStateWithLifecycle()
+
+    // Archive cards resolve their MP3 first, then hand it to the player.
+    LaunchedEffect(pendingPlay) {
+        pendingPlay?.let { ready ->
+            player.play(listOf(ready), 0)
+            showPlayer = true
+            browse.consumePendingPlay()
+        }
+    }
 
     LaunchedEffect(sessionVersion) {
         spotifyReady = Prefs.spotifyRefreshToken(context).isNotBlank()
@@ -400,21 +440,27 @@ private fun MainScreen() {
                         }
                     }
 
-                    else -> LazyColumn(
+                    else -> LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                            start = 12.dp, end = 12.dp, top = 4.dp, bottom = 96.dp
-                        )
+                            start = 12.dp, end = 12.dp, top = 4.dp, bottom = 100.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        itemsIndexed(tracks) { index, track ->
-                            TrackRow(
+                        items(count = tracks.size) { index ->
+                            val track = tracks[index]
+                            ArtworkCard(
                                 track = track,
                                 isCurrent = state.title == track.title && state.artist == track.artist,
                                 onClick = {
-                                    if (source == MusicSource.SPOTIFY) {
-                                        browse.playOnSpotify(track)
-                                    } else {
-                                        player.play(tracks, index)
-                                        showPlayer = true
+                                    when (source) {
+                                        MusicSource.SPOTIFY -> browse.playOnSpotify(track)
+                                        MusicSource.ARCHIVE -> browse.resolveArchive(track)
+                                        else -> {
+                                            player.play(tracks, index)
+                                            showPlayer = true
+                                        }
                                     }
                                 }
                             )
@@ -424,8 +470,8 @@ private fun MainScreen() {
             }
         }
 
-        // Spotify notice (playback happens inside the Spotify app)
-        if (source == MusicSource.SPOTIFY) {
+        // Source notices (Spotify playback, Archive resolving, errors)
+        run {
             notice?.let { message ->
                 Surface(
                     modifier = Modifier
@@ -709,6 +755,49 @@ private fun PlayerScreen(
             Spacer(Modifier.height(20.dp))
             CircularProgressIndicator(modifier = Modifier.size(22.dp))
         }
+    }
+}
+
+@Composable
+private fun ArtworkCard(track: Track, isCurrent: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            AsyncImage(
+                model = track.imageUrl,
+                contentDescription = track.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = track.title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isCurrent) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = track.artist,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
