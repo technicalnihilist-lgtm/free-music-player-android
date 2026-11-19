@@ -1,10 +1,8 @@
 <div align="center">
 
+<img src="assets/banner.svg" alt="Android music player (Kotlin + Compose + Media3) that streams Creative Commons licensed music from…">
+
 <a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/stargazers"><img src="https://img.shields.io/badge/stars-0-5A31F4?style=for-the-badge&logo=github&logoColor=white" alt="stars: 0"></a>&nbsp;<a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/network/members"><img src="https://img.shields.io/badge/forks-0-3FB950?style=for-the-badge" alt="forks: 0"></a>
-
-<h3>Android music player (Kotlin + Compose + Media3) that streams Creative Commons licensed music from…</h3>
-
-<img src="https://img.shields.io/badge/Kotlin-5865F2?style=flat-square" alt="Kotlin"> <img src="https://img.shields.io/badge/Android-3B3F4A?style=flat-square" alt="Android"> <img src="https://img.shields.io/badge/APK-3FB950?style=flat-square" alt="APK"> <img src="https://img.shields.io/badge/Creative%20Commons-EC4899?style=flat-square" alt="Creative Commons">
 
 <a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest"><img src="https://img.shields.io/badge/DOWNLOAD-APK-6D5AE6?style=for-the-badge&logo=android&logoColor=white" alt="Download APK"></a>
 
@@ -16,13 +14,7 @@
 
 <a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/releases/latest"><img src="https://img.shields.io/badge/VERSION-v1.7-6D5AE6?style=for-the-badge" alt="VERSION: v1.7"></a> <img src="https://img.shields.io/badge/DOWNLOADS-24-3FB950?style=for-the-badge" alt="DOWNLOADS: 24"> <a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/releases"><img src="https://img.shields.io/badge/RELEASES-GITHUB-EC4899?style=for-the-badge&logo=github&logoColor=white" alt="RELEASES: GITHUB"></a>
 
-<h4>Get it from</h4>
-
-<a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/releases"><img src="https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Releases"></a> <a href="https://github.com/technicalnihilist-lgtm/free-music-player-android/archive/refs/heads/main.zip"><img src="https://img.shields.io/badge/Source-ZIP-0EA5E9?style=for-the-badge&logo=github&logoColor=white" alt="Source ZIP"></a>
-
 </div>
-
----
 
 ---
 
